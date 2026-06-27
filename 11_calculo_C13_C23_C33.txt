@@ -1,0 +1,101 @@
+NDELE,ALL
+
+!NB=4771
+!NF=4793
+
+NF = node(0,0,0)
+NB = node(1,1,1)
+
+X0=NX(NF)
+NSEL,S,LOC,X,X0
+D,ALL, , , , , ,UX, , , , ,
+
+X1=NX(NB)
+NSEL,S,LOC,X,X1
+D,ALL, , , , , ,UX, , , , ,
+
+Y0=NY(NF)
+NSEL,S,LOC,Y,Y0 
+D,ALL, , , , , ,UY, , , , ,
+
+Y1=NY(NB)
+NSEL,S,LOC,Y,Y1 
+D,ALL, , , , , ,UY, , , , ,
+
+Z0=NZ(NB)
+NSEL,S,LOC,Z,Z0 
+D,ALL, , , , , ,UZ, , , , ,
+
+Z1=NZ(NF)
+NSEL,S,LOC,Z,Z1 
+D,ALL, ,3, , , ,UZ, , , , ,
+
+
+ALLSEL,ALL
+
+OUTRES,ALL,ALL
+
+NUMCMP,ELEM
+
+FINISH
+
+/SOLU
+SOLVE
+FINISH
+
+/POST1
+SET,LAST
+
+!-------------------------------
+!PROPIEDAD C13, C23, C33
+
+AVPRIN,0, , 
+ETABLE,ETABS33,EPEL,Z   
+!*  
+AVPRIN,0, , 
+ETABLE,ETABT11,S,X  
+ETABLE,ETABT22,S,Y 
+ETABLE,ETABT33,S,Z 
+!*  
+
+!*  
+*GET,NELEM11,ELEM,,COUNT, , , ,   
+*DIM,STRAIN33,ARRAY,NELEM11,1,1, , ,   
+!*  
+*DIM,STRESS11,ARRAY,NELEM11,1,1, , ,   
+*DIM,STRESS22,ARRAY,NELEM11,1,1, , ,   
+*DIM,STRESS33,ARRAY,NELEM11,1,1, , ,   
+!*  
+*DIM,VOLELEM11,ARRAY,NELEM11,1,1, , ,   
+!*  
+*VGET,VOLELEM11,ELEM,1,GEOM, , ,2 
+*VGET,STRAIN33,ELEM,1,ETAB,ETABS33, , ,2 
+*VGET,STRESS11,ELEM,1,ETAB,ETABT11, , ,2
+*VGET,STRESS22,ELEM,1,ETAB,ETABT22, , ,2
+*VGET,STRESS33,ELEM,1,ETAB,ETABT33, , ,2
+
+Pstress11 = 0.0
+Pstress22 = 0.0
+Pstress33 = 0.0
+Pstrain33 = 0.0
+*do,ipar,1,NELEM11
+  Pstress11 = Pstress11 + STRESS11(ipar)*VOLELEM11(ipar)
+  Pstress22 = Pstress22 + STRESS22(ipar)*VOLELEM11(ipar)
+  Pstress33 = Pstress33 + STRESS33(ipar)*VOLELEM11(ipar)
+  Pstrain33 = Pstrain33 + STRAIN33(ipar)*VOLELEM11(ipar)
+*enddo
+
+PropC13 = Pstress11/Pstrain33
+PropC23 = Pstress22/Pstrain33
+PropC33 = Pstress33/Pstrain33
+
+! --- Escribir archivo de texto (CSV sencillo)
+*CFOPEN, stiffness, csv,, APPEND
+! Encabezado (solo si quieres; quítalo si no)
+*VWRITE,'PropC13', 'PropC23', 'PropC33'
+( A,',', A,',', A )
+
+*VWRITE, PropC13, PropC23, PropC33
+( E16.9, ',', E16.9, ',', E16.9 )
+*CFCLOS
+

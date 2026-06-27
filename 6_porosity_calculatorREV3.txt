@@ -1,0 +1,111 @@
+import numpy as np
+import re
+
+def read_inp_file(filename):
+    with open(filename, 'r') as f:
+        lines = f.readlines()
+    
+    nodes = {}
+    volume_sets = {}
+    reading_nodes = False
+    current_set = None
+    
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        
+        line_lower = line.lower()
+        
+        if line_lower.startswith('*node'):
+            reading_nodes = True
+            continue
+        elif line_lower.startswith('*element, type=c3d4, elset='):
+            reading_nodes = False
+            match = re.search(r'ELSET=([\w\d]+)', line, re.IGNORECASE)
+            if match:
+                current_set = match.group(1)
+                volume_sets[current_set] = []
+            else:
+                current_set = None
+            continue
+        elif line_lower.startswith('*element, type=c3d4'):
+            reading_nodes = False
+            current_set = None
+            continue
+        elif line.startswith('*'):
+            reading_nodes = False
+            current_set = None
+            continue
+        
+        parts = re.split(r',\s*', line)
+        if not parts[0]:
+            continue
+
+        if reading_nodes:
+            node_id = int(parts[0])
+            coords = np.array([float(parts[1]), float(parts[2]), float(parts[3])])
+            nodes[node_id] = coords
+        elif current_set is not None:
+            element_id = int(parts[0])
+            node_ids = list(map(int, parts[1:5]))
+            volume_sets[current_set].append((element_id, node_ids))
+    
+    return nodes, volume_sets
+
+def compute_element_volume(nodes, element):
+    _, node_ids = element
+    coords = np.array([nodes[nid] for nid in node_ids])
+    matrix = np.ones((4, 4))
+    matrix[:, 1:] = coords
+    return abs(np.linalg.det(matrix)) / 6.0
+
+def compute_volumes(nodes, volume_sets):
+    volumes = {}
+    total_volume = 0.0
+    
+    for vol_set, elements in volume_sets.items():
+        volume = sum(compute_element_volume(nodes, elem) for elem in elements)
+        volumes[vol_set] = volume
+        total_volume += volume
+    
+    return volumes, total_volume
+
+def export_porosity(before_volumes, after_volumes, before_total, after_total, output_file):
+    porosity = ((before_total - after_total) / before_total) * 100.0 if before_total > 0 else 0.0
+    sorted_grains = sorted(before_volumes.keys(), key=lambda x: before_volumes[x])
+    
+    with open(output_file, 'w') as f:
+        f.write(f"Total Volume Before: {before_total:.10f}\n")
+        f.write(f"Total Volume After: {after_total:.10f}\n")
+        f.write(f"Porosity Percentage: {porosity:.10f}%\n\n")
+
+        f.write("Grain\t\tVolume Before\t\tVolume After\n")
+        for g in sorted_grains:
+            f.write(f"{g}\t{before_volumes[g]:.10f}\t{after_volumes.get(g, 0.0):.10f}\n")
+
+        f.write("\nAll Grains – Accumulative Volume\n")
+        acc_volume = 0.0
+        for g in sorted_grains:
+            acc_volume += before_volumes[g]
+            f.write(f"{g}\t{acc_volume:.10f}\n")
+
+def main():
+    before_nodes, before_volume_sets = read_inp_file('before.inp')
+    after_nodes, after_volume_sets = read_inp_file('after.inp')
+    
+    before_volumes, before_total = compute_volumes(before_nodes, before_volume_sets)
+    after_volumes, after_total = compute_volumes(after_nodes, after_volume_sets)
+    
+    export_porosity(
+        before_volumes,
+        after_volumes,
+        before_total,
+        after_total,
+        'porosity_results.txt'
+    )
+    
+    print("Results exported: porosity_results.txt")
+
+if __name__ == "__main__":
+    main()

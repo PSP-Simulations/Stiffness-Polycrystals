@@ -1,0 +1,212 @@
+NDELE,ALL
+
+!NB=4771
+!NF=4793
+
+NF = node(0,0,0)
+NB = node(1,1,1)
+
+!NB nodo inferior y=0 x=1
+!NF nodo superior y=1 z=1
+
+X0=NX(NF)
+X1=NX(NB)
+Z0=NZ(NB)
+Z1=NZ(NF)
+
+!* Cara X = 1 
+NSEL,S,LOC,X,X1,X1
+F,ALL,FZ,100
+
+!* Cara Z = 1   
+NSEL,S,LOC,Z,Z1,Z1  
+F,ALL,FX,100
+   
+!* cara X=0 
+NSEL,S,LOC,X,X0,X0  
+F,ALL,FZ,-100
+  
+!* Cara Z = 0   
+NSEL,S,LOC,Z,Z0,Z0
+F,ALL,FX,-100  
+
+ALLSEL,ALL
+
+
+!******* Condiciones de periodicidad en X *************
+
+! Initialize constraint equation counter
+Numeq=0
+
+! Select nodes at X = 0
+!* cara X=0 
+NSEL,S,LOC,X,X0,X0  
+*GET,Nnodx,NODE,,COUNT, , , ,
+*DIM,Nodecarax0,ARRAY,Nnodx,1,1, , ,   
+*GET,Nmin,NODE,,NUM,MIN, , , ,
+Numbernode = Nmin
+*do,inod,1,Nnodx
+  Nodecarax0(inod) = Numbernode
+  *GET,Nnext,NODE,Numbernode,NXTH   
+  Numbernode = Nnext
+*enddo
+
+ALLSEL,ALL
+
+*DIM,Nodecarax1,ARRAY,Nnodx,1,1, , , 
+periodx=X1-X0  
+*do,inod,1,Nnodx
+  nodx0 = Nodecarax0(inod)
+  nodx = nx(nodx0)
+  nody = ny(nodx0)
+  nodz = nz(nodx0)
+  Nodecarax1(inod) = node(nodx+periodx,nody,nodz)
+*enddo
+
+*do,inod,1,Nnodx
+  const = periodx 
+  nodx0 = Nodecarax0(inod)
+  nodx1 = Nodecarax1(inod)
+  Numeq = Numeq + 1
+  CE,Numeq,const,nodx0,UX,-1,nodx1,UX,1
+  Numeq = Numeq + 1
+!  CE,Numeq,const,nodx0,UY,-1,nodx1,UY,1
+!  Numeq = Numeq + 1
+  CE,Numeq,const,nodx0,UZ,-1,nodx1,UZ,1
+*enddo
+
+!******* Condiciones de periodicidad en Z *************
+! Select nodes at Z = 0
+!* cara Z=0 
+NSEL,S,LOC,Z,Z0,Z0
+*GET,NnodZ,NODE,,COUNT, , , ,
+*DIM,Nodecaraz0,ARRAY,Nnodz,1,1, , ,   
+*GET,Nmin,NODE,,NUM,MIN, , , ,
+Numbernode = Nmin
+*do,inod,1,Nnodz
+  Nodecaraz0(inod) = Numbernode
+  *GET,Nnext,NODE,Numbernode,NXTH   
+  Numbernode = Nnext
+*enddo
+
+ALLSEL,ALL  
+
+*DIM,Nodecaraz1,ARRAY,Nnodz,1,1, , , 
+periodz=Z1-Z0  
+*do,inod,1,Nnodz
+  nodz0 = Nodecaraz0(inod)
+  nodx = nx(nodz0)
+  nody = ny(nodz0)
+  nodz = nz(nodz0)
+  Nodecaraz1(inod) = node(nodx,nody,nodz+periodz)
+*enddo
+
+*do,inod,1,Nnodz
+  const = periodz 
+  nodz0 = Nodecaraz0(inod)
+  nodz1 = Nodecaraz1(inod)
+  Numeq = Numeq + 1
+  CE,Numeq,const,nodz0,UX,-1,nodz1,UX,1
+!  Numeq = Numeq + 1
+!  CE,Numeq,const,nodz0,UY,-1,nodz1,UY,1
+  Numeq = Numeq + 1
+  CE,Numeq,const,nodz0,UZ,-1,nodz1,UZ,1
+*enddo
+
+!*********************************************************
+
+!Fijacion de la arista X=0 & Z=0
+
+NSEL,S,LOC,X,X0,X0  
+NSEL,R,LOC,Z,Z0,Z0  
+D,ALL,ALL,0 
+ALLSEL,ALL
+
+!*********************************************************
+
+/SOLU
+SOLVE
+FINISH
+
+/POST1
+SET,LAST
+
+!Calcular el  numero de elementos y el Valor del Volumen X.
+*GET,NELEM,ELEM,,COUNT, , , ,   
+*DIM,vvelem,ARRAY,NELEM,1,1, , ,
+*VGET,vvelem,ELEM,1,GEOM, , ,2  
+
+!Ciclo Do  
+Volelem=0
+*DO,ip,1,NELEM
+       Volelem=Volelem+vvelem(ip)
+*ENDDO
+!Termina ciclo Do   
+ 
+!Esfuerzo YZ*********************************************************
+!Element Table. 
+AVPRIN,0, , 
+ETABLE,EsigmaYZ,S,YZ
+*DIM,Apsigmayz,ARRAY,NELEM,1,1, , ,  
+*VGET,Apsigmayz,ELEM,1,ETAB,ESIGMAYZ, , ,2
+
+PromsigmaYZ=0
+*Do,ip,1,NELEM
+   PromsigmaYZ=PromsigmaYZ+vvelem(ip)*Apsigmayz(ip)
+*ENDDO
+PromsigmaYZfinal=PromsigmaYZ/Volelem
+
+!Esfuerzo XZ*********************************************************
+!Element Table. 
+AVPRIN,0, , 
+ETABLE,EsigmaXZ,S,XZ
+*DIM,Apsigmaxz,ARRAY,NELEM,1,1, , ,  
+*VGET,Apsigmaxz,ELEM,1,ETAB,ESIGMAXZ, , ,2
+
+PromsigmaXZ=0
+*Do,ip,1,NELEM
+   PromsigmaXZ=PromsigmaXZ+vvelem(ip)*Apsigmaxz(ip)
+*ENDDO
+PromsigmaXZfinal=PromsigmaXZ/Volelem
+
+!Esfuerzo XY*********************************************************
+!Element Table. 
+AVPRIN,0, , 
+ETABLE,EsigmaXY,S,XY
+*DIM,Apsigmaxy,ARRAY,NELEM,1,1, , ,  
+*VGET,Apsigmaxy,ELEM,1,ETAB,ESIGMAXY, , ,2
+
+PromsigmaXY=0
+*Do,ip,1,NELEM
+   PromsigmaXY=PromsigmaXY+vvelem(ip)*Apsigmaxy(ip)
+*ENDDO
+Promsigmaxyfinal=Promsigmaxy/Volelem
+
+!Deformacion XZ*****************************************************
+AVPRIN,0, , 
+ETABLE,EDeformXZ,EPTO,XZ 
+*DIM,ApDeformxz,ARRAY,NELEM,1,1, , ,  
+*VGET,ApDeformxz,ELEM,1,ETAB,EDeformXZ, , ,2
+
+PromDeformxz=0
+*Do,ip,1,NELEM
+   PromDeformxz=PromDeformxz+vvelem(ip)*ApDeformxz(ip)
+*ENDDO
+PromDeformxzfinal=PromDeformxz/Volelem
+
+!********************************************************************
+
+!Calculo de C66
+
+PROPC66 = PromsigmaXZfinal/PromDeformxzfinal
+
+! --- Escribir archivo de texto (CSV sencillo)
+*CFOPEN, stiffness, csv,, APPEND
+! Encabezado (solo si quieres; quítalo si no)
+*VWRITE,'PropC66'
+( A )
+
+*VWRITE, PropC66
+( E16.9)
+*CFCLOS
+

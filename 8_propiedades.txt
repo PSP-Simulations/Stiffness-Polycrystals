@@ -1,0 +1,55 @@
+finish
+/clear
+
+!Numero de granos
+!Ngranos = 892
+Ngranos = 100
+
+
+/PREP7
+!*
+
+*DIM, datos, ARRAY, 21, Ngranos  ! Define un array con Ngranos filas y 21 columnas
+
+*CREATE,ansuitmp
+*VREAD,datos,'output','txt',' ',IJK,21,Ngranos,1, , 
+(21E14.7)   
+*END
+/INPUT,ansuitmp 
+!*  
+
+!Asignacion propiedades
+
+*do,iprop,1,Ngranos
+
+  C11=datos(1,iprop)
+  C12=datos(2,iprop)
+  C13=datos(3,iprop)
+  C14=datos(4,iprop)
+  C15=datos(5,iprop)
+  C16=datos(6,iprop)
+  C22=datos(7,iprop)
+  C23=datos(8,iprop)
+  C24=datos(9,iprop)
+  C25=datos(10,iprop)
+  C26=datos(11,iprop)
+  C33=datos(12,iprop)  
+  C34=datos(13,iprop)
+  C35=datos(14,iprop)
+  C36=datos(15,iprop)
+  C44=datos(16,iprop)
+  C45=datos(17,iprop)
+  C46=datos(18,iprop)
+  C55=datos(19,iprop)
+  C56=datos(20,iprop)
+  C66=datos(21,iprop)
+
+  TB,ANEL,iprop,1,21,0
+  TBTEMP,0
+  TBDATA,,C11,C12,C13,C14,C15,C16 
+  TBDATA,,C22,C23,C24,C25,C26,C33 
+  TBDATA,,C34,C35,C36,C44,C45,C46 
+  TBDATA,,C55,C56,C66,,,
+
+*enddo
+
