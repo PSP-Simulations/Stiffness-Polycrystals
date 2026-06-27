@@ -1,0 +1,1 @@
+neper -T -n 100 -morpho "diameq:lognormal(0.91,0.55)" -morphooptiini "weight:radeq,coo:packing" -o zahr -format geo
